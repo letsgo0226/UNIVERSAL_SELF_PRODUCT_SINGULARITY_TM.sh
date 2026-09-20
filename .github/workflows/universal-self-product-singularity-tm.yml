@@ -1,0 +1,45 @@
+name: UNIVERSAL_SELF_PRODUCT_SINGULARITY_TM
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  push:
+    branches: [main, master]
+    paths:
+      - "UNIVERSAL_SELF_PRODUCT_SINGULARITY_TM.sh"
+      - "UNIVERSAL_SELF_PRODUCT_SINGULARITY_TM.md"
+      - ".github/workflows/universal-self-product-singularity-tm.yml"
+  workflow_dispatch:
+  repository_dispatch:
+    types: [universal_self_product_singularity_tm]
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify singularity TM certificate
+        run: |
+          set -euo pipefail
+          BYTES=$(wc -c < UNIVERSAL_SELF_PRODUCT_SINGULARITY_TM.sh | tr -d ' ')
+          echo "bytes=$BYTES"
+          test "$BYTES" -lt 2048
+          bash UNIVERSAL_SELF_PRODUCT_SINGULARITY_TM.sh | tee cert.json
+          python3 - <<'PY'
+          import json
+          o=json.load(open("cert.json"))
+          assert o.get("model")=="UNIVERSAL_SELF_PRODUCT_SINGULARITY_TM"
+          assert o.get("seed")==[0,0,0,0,0,0]
+          assert o.get("G0")==30030 and o.get("G")==30030
+          assert o.get("zero_information_fixed_point") is True
+          assert "no floating point" in str(o.get("exactness",""))
+          print("PASS", o.get("identity"))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: universal-self-product-singularity-tm-certificate
+          path: cert.json
